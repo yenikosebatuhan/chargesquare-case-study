@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { api, auth } from "../api.js";
+import { Bolt, Warning } from "../icons.jsx";
 
 export default function Login({ onLoggedIn }) {
   const [username, setUsername] = useState("");
@@ -22,28 +23,47 @@ export default function Login({ onLoggedIn }) {
     }
   };
 
+  const fill = (u, p) => { setUsername(u); setPassword(p); setError(null); };
+
   return (
     <div className="login-screen">
       <form className="login-card" onSubmit={submit}>
-        <div className="brand big">⚡ ChargeSquare</div>
-        <p className="subtitle">Operations panel</p>
+        <div className="login-brand">
+          <div className="logo"><Bolt style={{ width: 22, height: 22, color: "#052e16" }} /></div>
+          <div>
+            <h1>ChargeSquare</h1>
+            <p>Operations Panel</p>
+          </div>
+        </div>
 
-        <label>
-          Username
-          <input value={username} onChange={(e) => setUsername(e.target.value)} autoFocus />
-        </label>
-        <label>
-          Password
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
-        </label>
+        <div>
+          <h2>Sign in</h2>
+          <p className="lede">Use a demo account to explore the panel.</p>
+        </div>
 
-        {error && <div className="error-banner">{error}</div>}
+        <div className="field">
+          <label htmlFor="u">Username</label>
+          <input id="u" value={username} onChange={(e) => setUsername(e.target.value)} autoFocus autoComplete="username" />
+        </div>
+        <div className="field">
+          <label htmlFor="p">Password</label>
+          <input id="p" type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" />
+        </div>
 
-        <button type="submit" disabled={loading || !username || !password}>
+        {error && <div className="error-banner"><Warning style={{ width: 16, height: 16 }} /> {error}</div>}
+
+        <button type="submit" className="btn btn-primary btn-block" disabled={loading || !username || !password}>
           {loading ? "Signing in…" : "Sign in"}
         </button>
 
-        <p className="hint">Demo users: <code>admin / admin123</code> or <code>viewer / viewer123</code></p>
+        <div className="demo-chips">
+          <button type="button" className="chip" onClick={() => fill("admin", "admin123")}>
+            <b>admin</b> full access
+          </button>
+          <button type="button" className="chip" onClick={() => fill("viewer", "viewer123")}>
+            <b>viewer</b> read-only
+          </button>
+        </div>
       </form>
     </div>
   );
