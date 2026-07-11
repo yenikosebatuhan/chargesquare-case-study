@@ -1,0 +1,23 @@
+# Build output
+target/
+build/
+*.class
+
+# Node / web
+node_modules/
+web/dist/
+*.local
+
+# Env & secrets (never commit real values)
+.env
+*.env
+!.env.example
+
+# IDE / OS
+.idea/
+*.iml
+.vscode/
+.DS_Store
+
+# Logs
+*.log

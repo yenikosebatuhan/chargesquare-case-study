@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: station-service
+  labels:
+    app: station-service
+    app.kubernetes.io/part-of: chargesquare
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: station-service
+  template:
+    metadata:
+      labels:
+        app: station-service
+    spec:
+      containers:
+        - name: station-service
+          image: chargesquare/station-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8081
+          env:
+            - name: SERVER_PORT
+              value: "8081"
+            # Non-secret config from the ConfigMap.
+            - name: DB_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: chargesquare-config
+                  key: DB_URL
+            - name: SECURITY_ENABLED
+              valueFrom:
+                configMapKeyRef:
+                  name: chargesquare-config
+                  key: SECURITY_ENABLED
+            # Secrets from the Secret.
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: chargesquare-secrets
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: chargesquare-secrets
+                  key: POSTGRES_PASSWORD
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: chargesquare-secrets
+                  key: JWT_SECRET
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8081
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8081
+            initialDelaySeconds: 30
+            periodSeconds: 15

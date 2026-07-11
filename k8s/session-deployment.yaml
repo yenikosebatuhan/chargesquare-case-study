@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: session-service
+  labels:
+    app: session-service
+    app.kubernetes.io/part-of: chargesquare
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: session-service
+  template:
+    metadata:
+      labels:
+        app: session-service
+    spec:
+      containers:
+        - name: session-service
+          image: chargesquare/session-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8082
+          env:
+            - name: SERVER_PORT
+              value: "8082"
+            - name: DB_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: chargesquare-config
+                  key: DB_URL
+            - name: STATION_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: chargesquare-config
+                  key: STATION_SERVICE_URL
+            - name: SECURITY_ENABLED
+              valueFrom:
+                configMapKeyRef:
+                  name: chargesquare-config
+                  key: SECURITY_ENABLED
+            - name: JWT_EXPIRY_MINUTES
+              valueFrom:
+                configMapKeyRef:
+                  name: chargesquare-config
+                  key: JWT_EXPIRY_MINUTES
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: chargesquare-secrets
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: chargesquare-secrets
+                  key: POSTGRES_PASSWORD
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: chargesquare-secrets
+                  key: JWT_SECRET
+            - name: DEMO_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: chargesquare-secrets
+                  key: DEMO_ADMIN_PASSWORD
+            - name: DEMO_VIEWER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: chargesquare-secrets
+                  key: DEMO_VIEWER_PASSWORD
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8082
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8082
+            initialDelaySeconds: 30
+            periodSeconds: 15

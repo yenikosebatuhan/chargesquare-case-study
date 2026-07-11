@@ -1,0 +1,18 @@
+# Test profile: in-memory H2, schema from JPA, no Flyway, security off so tests
+# focus on domain behaviour. (Security itself is exercised in Session Service tests.)
+spring:
+  datasource:
+    url: jdbc:h2:mem:station;DB_CLOSE_DELAY=-1;MODE=PostgreSQL
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    open-in-view: false
+  flyway:
+    enabled: false
+
+security:
+  enabled: false
+  jwt:
+    secret: test-signing-key-at-least-32-bytes-long!!

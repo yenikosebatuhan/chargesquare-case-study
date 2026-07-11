@@ -1,0 +1,14 @@
+# Non-secret configuration shared by the services. Deployments read it via envFrom.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: chargesquare-config
+  labels:
+    app.kubernetes.io/part-of: chargesquare
+data:
+  DB_URL: "jdbc:postgresql://postgres:5432/chargesquare"
+  STATION_SERVICE_URL: "http://station-service:8081"
+  SECURITY_ENABLED: "true"
+  JWT_EXPIRY_MINUTES: "120"
+  # A default tariff price lives here to show config-driven values (services read env).
+  DEFAULT_TARIFF_PRICE_PER_KWH: "8.50"
