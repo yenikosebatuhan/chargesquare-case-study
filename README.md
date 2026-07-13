@@ -24,8 +24,9 @@ shared Postgres database, plus an optional React ops panel with JWT/RBAC (Stage 
 - **Session Service** (`:8082`) — the heart of the exercise: the guarded start/stop lifecycle,
   cost calculation, and wallet settlement (wallet folded in, the recommended two-service
   default). Also hosts login/JWT issuance for Stage 2.
-- **Web panel** (`:8080`, optional) — login, stations list, sessions list, and a role-gated
-  stop / top-up action.
+- **Web panel** (`:8080`, optional) — a JWT-authenticated ops panel: a **Charging** page (start a
+  session, watch it charge live, stop & bill) and a **Sessions** page (history, receipts, wallet
+  top-up). All write actions are role-gated and enforced server-side.
 
 ## Stack & why
 
@@ -134,16 +135,20 @@ Everything comes from env vars — nothing hardcoded. See [.env.example](.env.ex
 ## Kubernetes & CI
 
 - `k8s/` — plain YAML: Deployment + Service per service, Postgres, a **ConfigMap** (non-secret
-  config incl. a default tariff price) and a **Secret** (placeholders only). Validate without a
-  cluster: `kubectl apply --dry-run=client -f k8s/`.
+  config incl. a default tariff price) and a **Secret** (placeholders only). Validate against a
+  cluster with `kubectl apply --dry-run=client -f k8s/` (the manifests are also structurally
+  valid offline; `--dry-run=client` needs a reachable cluster for full schema validation).
 - `.github/workflows/ci.yml` — on push: builds + tests both services (JDK 21), builds the Docker
   images, and builds the web panel.
 
 ## Assumptions & known gaps
 
-- **Insufficient balance → allow the stop and go negative** (documented in `DESIGN.md`): a session
-  that physically ended must always be closeable and the connector freed. Reject-the-stop is the
-  equally-valid alternative.
+- **Insufficient balance → the stop still succeeds and the wallet may go negative** (implemented;
+  see `Wallet.debit` and `DESIGN.md`). Rationale: a session that has physically ended must always be
+  closeable and the connector freed, so a billing shortfall never strands hardware — the negative
+  balance is a recoverable debt (settled by a later top-up). The panel simply shows the balance
+  going below zero. Reject-the-stop is the equally-valid alternative; I chose asset availability
+  over strict prepay.
 - Energy is **reported in the stop request** (meter is simulated), exactly as the brief allows.
 - Users/wallets are **pre-seeded** (driver `7`); there is no user-creation endpoint — out of scope.
 - Panel users (`admin`, `viewer`) are **driver-independent ops accounts**, seeded at startup with

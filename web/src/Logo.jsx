@@ -15,10 +15,10 @@ export default function Logo({ size = 28, variant = "brand", style }) {
           </linearGradient>
         </defs>
       )}
-      <g fill="none" stroke={stroke} strokeWidth="31" strokeLinecap="round">
-        <line x1="81" y1="17" x2="21" y2="73" />
-        <line x1="18" y1="89" x2="118" y2="82" />
-        <line x1="115" y1="78" x2="47" y2="164" />
+      <g fill="none" stroke={stroke} strokeWidth="27" strokeLinecap="round">
+        <line x1="80" y1="14" x2="20" y2="72" />
+        <line x1="17" y1="89" x2="119" y2="81" />
+        <line x1="116" y1="77" x2="46" y2="166" />
       </g>
     </svg>
   );
