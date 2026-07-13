@@ -1,28 +1,23 @@
 import { useState } from "react";
 import { auth } from "./api.js";
+import Logo from "./Logo.jsx";
 import Login from "./components/Login.jsx";
-import Stations from "./components/Stations.jsx";
+import Charging from "./components/Charging.jsx";
 import Sessions from "./components/Sessions.jsx";
-import { Bolt, Layers, Activity, Logout } from "./icons.jsx";
+import { Zap, Receipt, Logout } from "./icons.jsx";
 
 // Demo scope: one station and one driver, matching the seed data.
 const STATION_ID = 1;
 const USER_ID = 7;
 
 const PAGES = {
-  stations: {
-    title: "Stations & Connectors",
-    subtitle: "Live view of the charging infrastructure and its tariffs.",
-  },
-  sessions: {
-    title: "Sessions & Wallet",
-    subtitle: "Charging sessions, receipts, and driver balance.",
-  },
+  charging: { title: "Charging", subtitle: "Start sessions, watch live charging, stop and bill." },
+  sessions: { title: "Sessions & Wallet", subtitle: "Session history, receipts, and driver balance." },
 };
 
 export default function App() {
   const [user, setUser] = useState(auth.user());
-  const [page, setPage] = useState("stations");
+  const [page, setPage] = useState("charging");
 
   if (!user) return <Login onLoggedIn={setUser} />;
 
@@ -33,7 +28,7 @@ export default function App() {
     <div className="shell">
       <aside className="sidebar">
         <div className="brand">
-          <div className="logo"><Bolt style={{ width: 20, height: 20, color: "#052e16" }} /></div>
+          <div className="logo-badge"><Logo size={22} variant="mono" /></div>
           <div>
             <div className="brand-name">ChargeSquare</div>
             <div className="brand-sub">Ops Panel</div>
@@ -41,12 +36,12 @@ export default function App() {
         </div>
 
         <nav className="nav">
-          <div className="nav-label">Manage</div>
-          <button className={`nav-item ${page === "stations" ? "active" : ""}`} onClick={() => setPage("stations")}>
-            <Layers /> Stations
+          <div className="nav-label">Operations</div>
+          <button className={`nav-item ${page === "charging" ? "active" : ""}`} onClick={() => setPage("charging")}>
+            <Zap style={{ width: 18, height: 18 }} /> Charging
           </button>
           <button className={`nav-item ${page === "sessions" ? "active" : ""}`} onClick={() => setPage("sessions")}>
-            <Activity /> Sessions
+            <Receipt style={{ width: 18, height: 18 }} /> Sessions
           </button>
         </nav>
 
@@ -56,9 +51,7 @@ export default function App() {
           <div className="avatar">{initials}</div>
           <div className="user-meta">
             <div className="user-name">{user.username}</div>
-            <div className="user-role">
-              <span className={`role-badge ${user.role.toLowerCase()}`}>{user.role}</span>
-            </div>
+            <div className="user-role"><span className={`role-badge ${user.role.toLowerCase()}`}>{user.role}</span></div>
           </div>
           <button className="icon-btn" onClick={logout} title="Log out"><Logout /></button>
         </div>
@@ -70,16 +63,19 @@ export default function App() {
             <h1>{PAGES[page].title}</h1>
             <p>{PAGES[page].subtitle}</p>
           </div>
+          <div className="header-station"><Logo size={16} /> <span>Station #{STATION_ID} · Kadıköy</span></div>
         </header>
 
         <main className="content">
-          {page === "stations" && <Stations stationId={STATION_ID} />}
+          {page === "charging" && (
+            <Charging stationId={STATION_ID} driverId={USER_ID} isAdmin={user.role === "ADMIN"} onAuthError={logout} />
+          )}
           {page === "sessions" && (
             <Sessions userId={USER_ID} isAdmin={user.role === "ADMIN"} onAuthError={logout} />
           )}
           <p className="footnote">
-            Roles are enforced on the server. The disabled buttons are only a hint — a VIEWER token
-            calling a write endpoint directly still receives a 403.
+            Roles are enforced on the server — disabled buttons are only a hint. A VIEWER token
+            calling a write endpoint (start / stop / top-up) directly still receives a 403.
           </p>
         </main>
       </div>

@@ -153,8 +153,11 @@ Everything comes from env vars — nothing hardcoded. See [.env.example](.env.ex
 
 ## Optional parts attempted
 
-- ✅ **Stage 2** admin panel (login, stations, sessions, role-gated stop) + full JWT/RBAC on both
-  services, enforced server-side. See `SECURITY.md`.
+- ✅ **Stage 2** admin panel + full JWT/RBAC on both services, enforced server-side. The panel
+  drives the whole flow visually — **start charging → live session (animated, elapsed timer) →
+  stop & bill (live cost preview) → receipt** — plus a sessions history and driver wallet. Brand
+  mark traced from the ChargeSquare logo. Screenshots in [docs/screenshots/](docs/screenshots).
+  See `SECURITY.md`.
 - ✅ Wallet **top-up** endpoint (stretch) — balance goes up then down across a session.
 - ✅ Readiness/liveness probes wired into k8s.
 - ⬜ Not done: separate Wallet Service, reservations, time-of-use tariff, real event broker.

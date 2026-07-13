@@ -1,8 +1,20 @@
 # ChargeSquare Ops Panel (Stage 2)
 
-A small React + Vite admin panel: login, stations/connectors list, sessions list, and a
-role-gated **stop session** / **top-up wallet** action. Auth is JWT; roles are enforced on the
-**server** (the panel only disables buttons as a hint).
+A React + Vite operations panel for the charging backend. It makes the whole product flow
+visible and driveable: **start a session → watch it charge live → stop & bill → receipt**,
+with a driver wallet and JWT/RBAC. Auth is JWT; roles are enforced on the **server** (the
+panel only disables buttons as a hint). The brand mark is the ChargeSquare bolt, traced to SVG.
+
+## Screens
+
+| Screen | What it does |
+| --- | --- |
+| **Login** | Username/password → JWT. One-click demo credential chips. |
+| **Charging** | KPI cards (charging now / available / wallet); **live "Charging now"** cards with an animated bolt + elapsed timer + **Stop & bill**; connector cards with **Start charging**. |
+| **Start / Stop / Top-up modals** | Start confirms connector + tariff; Stop takes metered energy with a **live cost + wallet-after preview**; Top-up adds funds. |
+| **Sessions** | History table with status/energy/cost, click a row for the **receipt**, plus wallet + top-up. |
+
+Screenshots live in [`../docs/screenshots/`](../docs/screenshots).
 
 ## Run
 
@@ -21,7 +33,7 @@ docker compose --profile panel up --build   # panel on http://localhost:8080
 
 Log in with a demo user:
 
-| User | Password | Role | Can stop/top-up? |
+| User | Password | Role | Can start / stop / top-up? |
 | --- | --- | --- | --- |
 | `admin` | `admin123` | ADMIN | ✅ |
 | `viewer` | `viewer123` | VIEWER | ❌ (buttons disabled; API returns 403) |
@@ -29,5 +41,5 @@ Log in with a demo user:
 ## Config
 
 Base URLs are read at build time from `VITE_SESSION_API` and `VITE_STATION_API`
-(default `http://localhost:8082` / `:8081`). See `../SECURITY.md` for the auth design and the
-token-storage trade-off.
+(default `http://localhost:8082` / `:8081`). See [`../SECURITY.md`](../SECURITY.md) for the auth
+design and the token-storage trade-off.

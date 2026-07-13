@@ -34,3 +34,18 @@ export const Receipt = (p) => (
 export const Layers = (p) => (
   <svg viewBox="0 0 24 24" {...base} {...p}><path d="m12 2 9 5-9 5-9-5 9-5ZM3 12l9 5 9-5M3 17l9 5 9-5" /></svg>
 );
+export const Clock = (p) => (
+  <svg viewBox="0 0 24 24" {...base} {...p}><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
+);
+export const Car = (p) => (
+  <svg viewBox="0 0 24 24" {...base} {...p}><path d="M5 13l1.5-4.5A2 2 0 0 1 8.4 7h7.2a2 2 0 0 1 1.9 1.5L19 13M5 13h14v4H5v-4ZM7 17v2M17 17v2" /><circle cx="7.5" cy="14.5" r="1" /><circle cx="16.5" cy="14.5" r="1" /></svg>
+);
+export const Power = (p) => (
+  <svg viewBox="0 0 24 24" {...base} {...p}><path d="M12 3v9M7.5 6.5a7 7 0 1 0 9 0" /></svg>
+);
+export const Zap = (p) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" stroke="none" {...p}><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z" /></svg>
+);
+export const Check = (p) => (
+  <svg viewBox="0 0 24 24" {...base} {...p}><path d="M20 6 9 17l-5-5" /></svg>
+);

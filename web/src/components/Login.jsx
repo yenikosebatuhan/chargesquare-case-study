@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { api, auth } from "../api.js";
-import { Bolt, Warning } from "../icons.jsx";
+import Logo from "../Logo.jsx";
+import { Warning } from "../icons.jsx";
 
 export default function Login({ onLoggedIn }) {
   const [username, setUsername] = useState("");
@@ -29,7 +30,7 @@ export default function Login({ onLoggedIn }) {
     <div className="login-screen">
       <form className="login-card" onSubmit={submit}>
         <div className="login-brand">
-          <div className="logo"><Bolt style={{ width: 22, height: 22, color: "#052e16" }} /></div>
+          <div className="logo-badge lg"><Logo size={26} variant="mono" /></div>
           <div>
             <h1>ChargeSquare</h1>
             <p>Operations Panel</p>
