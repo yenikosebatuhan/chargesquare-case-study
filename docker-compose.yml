@@ -73,8 +73,8 @@ services:
     build:
       context: ./web
       args:
-        VITE_SESSION_API: http://localhost:8082
-        VITE_STATION_API: http://localhost:8081
+        VITE_SESSION_API: ${VITE_SESSION_API:-http://localhost:8082}
+        VITE_STATION_API: ${VITE_STATION_API:-http://localhost:8081}
     profiles: ["panel"]
     depends_on:
       - session-service
