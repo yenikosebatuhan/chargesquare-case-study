@@ -1,175 +1,175 @@
-# ChargeSquare — Charging Session Backend (Case Study)
+# ChargeSquare — EV Charging Backend (Case Study)
 
 One clean, correct slice of an EV-charging backend: **start a session → stop it → price it
-from a tariff → settle the wallet**, built as two cooperating Spring Boot services behind a
-shared Postgres database, plus an optional React ops panel with JWT/RBAC (Stage 2).
+from a tariff → settle the wallet**, built as **three cooperating Spring Boot services** behind a
+shared Postgres database, plus a React ops panel with JWT/RBAC (Stage 2).
+
+Stage 1 (essential) and Stage 2 (panel + security) are complete, along with **every stretch goal**
+from the brief — see [Advanced features](#advanced-features-stretch-goals).
 
 ```
- React Ops Panel (Stage 2)          POST /auth/login
-        │  Bearer <jwt>                     │
-        ▼                                   ▼
-┌──────────────────┐   REST (occupy/    ┌──────────────────┐
-│  Session Service │───release/read)──▶ │  Station Service │
-│  8082            │   over the network │  8081            │
-│  sessions + wallet│                    │ stations/        │
-│  + auth/JWT       │                    │ connectors/tariffs│
-└────────┬─────────┘                    └─────────┬────────┘
-         └───────────────┬──────────────────────┘
-                         ▼
-                   PostgreSQL (shared)
+ React Ops Panel (Stage 2)  ──login──▶ Session Service ──┐
+        │  Bearer <jwt>                                   │
+        ├─────────── reads ──────────▶ Station Service    │ real synchronous
+        └─────────── wallet ─────────▶ Wallet Service     │ REST calls
+                                                          ▼
+┌──────────────────┐   occupy/release/reserve   ┌──────────────────┐
+│  Session Service │──────── (network) ────────▶│  Station Service │
+│  :8082           │                            │  :8081           │
+│  session lifecycle│   idempotent debit         │ stations/        │
+│  auth · idempotency│──────────┐                │ connectors/tariffs│
+└──────────────────┘           ▼                └──────────────────┘
+                     ┌──────────────────┐
+                     │  Wallet Service  │        all three own their own tables
+                     │  :8083           │        + their own Flyway history in
+                     │ balances · debit │        one shared PostgreSQL
+                     └──────────────────┘
 ```
 
-- **Station Service** (`:8081`) — source of truth for stations, connectors and tariffs.
-  Reads plus an internal `occupy`/`release` status flip.
+- **Station Service** (`:8081`) — source of truth for stations, connectors and tariffs. Reads,
+  the internal `occupy`/`release` flip, **reservations**, and **time-of-use** pricing.
 - **Session Service** (`:8082`) — the heart of the exercise: the guarded start/stop lifecycle,
-  cost calculation, and wallet settlement (wallet folded in, the recommended two-service
-  default). Also hosts login/JWT issuance for Stage 2.
-- **Web panel** (`:8080`, optional) — a JWT-authenticated ops panel: a **Charging** page (start a
-  session, watch it charge live, stop & bill) and a **Sessions** page (history, receipts, wallet
-  top-up). All write actions are role-gated and enforced server-side.
+  cost calculation, settlement orchestration, **client idempotency**, auth/JWT, and a
+  **stuck-connector reaper**.
+- **Wallet Service** (`:8083`) — per-user balances with an **idempotent debit** at stop time and a
+  top-up endpoint.
+- **Web panel** (`:8080`, optional) — a JWT-authenticated ops panel: a **Charging** page (start,
+  reserve, watch live charging, stop & bill) and a **Sessions** page (history, receipts, wallet).
 
 ## Stack & why
 
 | Choice | Pick | Why (one sentence) |
 | --- | --- | --- |
-| Language / framework | **Java 21 + Spring Boot 3.3** | Your house stack, and the fastest way for me to write idiomatic, well-tested REST + JPA. |
-| Database | **PostgreSQL, single shared DB** | Simplest thing that clearly works; each service owns its own tables + Flyway history table. |
-| Service comms | **Synchronous REST** (`RestClient`) | Expected default; the required Session→Station call goes over the network, wallet settled in-process. |
-| Tariff on a session | **Snapshot at start** | A mid-session price change must never alter what the driver is charged. |
-| Wallet placement | **Folded into Session Service** | Keeps the essential slice small; a third service would add a network hop for little gain here. |
-| Repo layout | **Monorepo** | One clone, one `docker compose up`; trade-off is coupled versioning, fine for a take-home. |
-| Money | **`BigDecimal`, `HALF_UP` to 2 dp** | Decimal-safe; never a float where money is involved (see `CostCalculator`). |
+| Language / framework | **Java 21 + Spring Boot 3.3** | House stack; fastest path to idiomatic, well-tested REST + JPA. |
+| Database | **PostgreSQL, single shared DB** | Simplest thing that works; each service owns its tables + its own Flyway history table. |
+| Service comms | **Synchronous REST** (`RestClient`) | Two real network hops (Session→Station, Session→Wallet); no broker/saga. |
+| Tariff on a session | **Snapshot at start** (peak/off-peak resolved then) | A mid-session price change never alters what the driver is charged. |
+| Wallet placement | **Separate Wallet Service** | Demonstrates a second clean boundary + idempotent settlement (a stretch beyond the 2-service default). |
+| Repo layout | **Monorepo** | One clone, one `docker compose up`; trade-off is coupled versioning. |
+| Money | **`BigDecimal`, `HALF_UP` to 2 dp** | Decimal-safe; never a float where money is involved (`CostCalculator`). |
+| Idempotency | **Two layers** | Client `Idempotency-Key` on stop + wallet debit keyed by session id → a retried stop never double-charges. |
 
 ## Run it — one command
 
 ```bash
 cp .env.example .env          # local dev placeholders; never commit a real .env
-docker compose up --build     # Postgres + Station + Session, schema created from scratch
+docker compose up --build     # Postgres + Station + Wallet + Session, schema created from scratch
 ```
 
-Wait for both services to report healthy, then drive the flow below. Add the admin panel with
+Wait for the services to report healthy, then drive the flow below. Add the admin panel with
 `docker compose --profile panel up --build` (panel on http://localhost:8080).
 
-> **Security note:** the compose file runs with `SECURITY_ENABLED=true` (full Stage 1 + Stage 2).
-> The curl walkthrough logs in first. To exercise a pure, open **Stage-1-only** backend, set
-> `SECURITY_ENABLED=false` in `.env` and skip the token steps.
+> **Security note:** the compose file runs with `SECURITY_ENABLED=true`. The curl walkthrough logs
+> in first. Set `SECURITY_ENABLED=false` in `.env` for an open, token-free backend.
 
 ## End-to-end walkthrough (curl)
 
-Seed state: connector `10` is AVAILABLE, tariff `8.50/kWh + 2.00` start fee, user `7` wallet `500.00`.
+Seed: connector `10` AVAILABLE, tariff `8.50/kWh + 2.00` (peak `10.50`), connector `11` at `5.00`,
+user `7` wallet `500.00`.
 
 ```bash
-# 1) Log in as ADMIN and capture the token
-TOKEN=$(curl -s -X POST http://localhost:8082/auth/login \
-  -H 'Content-Type: application/json' \
+# 1) Log in as ADMIN
+TOKEN=$(curl -s -X POST http://localhost:8082/auth/login -H 'Content-Type: application/json' \
   -d '{"username":"admin","password":"admin123"}' | sed -E 's/.*"token":"([^"]+)".*/\1/')
+A="Authorization: Bearer $TOKEN"; J="Content-Type: application/json"
 
-# 2) START a session on connector 10  -> 201, connector becomes OCCUPIED, tariff snapshotted
-curl -s -X POST http://localhost:8082/sessions \
-  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
-  -d '{"userId":7,"connectorId":10}'
-# { "sessionId":100, "status":"ACTIVE", "startedAt":"...", "tariffSnapshot":{...} }
+# 2) START on connector 10 -> 201, connector OCCUPIED, tariff snapshotted
+curl -s -X POST http://localhost:8082/sessions -H "$A" -H "$J" -d '{"userId":7,"connectorId":10}'
 
-# 3) STOP it with 12.5 kWh  -> cost = 12.5*8.50 + 2.00 = 108.25; wallet 500.00 -> 391.75
-curl -s -X POST http://localhost:8082/sessions/100/stop \
-  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
-  -d '{"energyKwh":12.5}'
-# { "sessionId":100, "status":"COMPLETED", "cost":108.25, "walletBalanceAfter":391.75, ... }
+# 3) STOP with 12.5 kWh (+ Idempotency-Key) -> priced, settled via Wallet Service
+curl -s -X POST http://localhost:8082/sessions/100/stop -H "$A" -H "$J" \
+  -H 'Idempotency-Key: abc-1' -d '{"energyKwh":12.5}'
+# { "status":"COMPLETED", "cost":108.25, "walletBalanceAfter":391.75, ... }
+# (peak hours: pricePerKwh snapshot is 10.50 and cost is 133.25)
 
-# 4) Read it all back
-curl -s -H "Authorization: Bearer $TOKEN" http://localhost:8082/sessions/100
-curl -s -H "Authorization: Bearer $TOKEN" http://localhost:8082/users/7/sessions
-curl -s -H "Authorization: Bearer $TOKEN" http://localhost:8081/stations/1/connectors
+# 4) Replaying the same stop with the same Idempotency-Key -> the SAME receipt, no double charge
+curl -s -X POST http://localhost:8082/sessions/100/stop -H "$A" -H "$J" \
+  -H 'Idempotency-Key: abc-1' -d '{"energyKwh":12.5}'
+
+# 5) Reserve then start on your own reservation
+curl -s -X POST http://localhost:8082/reservations -H "$A" -H "$J" -d '{"userId":7,"connectorId":11}'
+curl -s -X POST http://localhost:8082/sessions      -H "$A" -H "$J" -d '{"userId":7,"connectorId":11}'
+
+# 6) Reads
+curl -s -H "$A" http://localhost:8082/sessions/100
+curl -s -H "$A" http://localhost:8081/stations/1/connectors
+curl -s -H "$A" http://localhost:8083/wallets/7
 ```
 
-Try the guards (each returns the small `{ "error", "message" }` body):
-
-```bash
-# Start on an OCCUPIED connector -> 409 CONNECTOR_OCCUPIED
-# Start on an unknown connector  -> 404 CONNECTOR_NOT_FOUND
-# Stop the same session twice     -> 409 SESSION_NOT_ACTIVE (no double charge)
-# Missing userId / negative energy -> 400 VALIDATION_ERROR
-# A VIEWER token calling start/stop -> 403 FORBIDDEN
-```
+Guards (each returns the small `{ "error", "message" }` body): unknown connector → 404, occupied →
+409, stop-twice (no key) → 409, missing/negative field → 400, VIEWER on a write → 403.
 
 ## Main endpoints
 
-**Station Service (`:8081`)**
-| Method | Path | Notes |
-| --- | --- | --- |
-| GET | `/connectors/{id}` | status + tariff (404 if unknown) |
-| GET | `/stations/{id}/connectors` | list connectors for a station |
-| POST | `/connectors/{id}/occupy` | internal; ADMIN when secured |
-| POST | `/connectors/{id}/release` | internal; ADMIN when secured |
+**Station Service (`:8081`)** — `GET /connectors/{id}` · `GET /stations/{id}/connectors` ·
+`POST /connectors/{id}/occupy|release` · `POST /connectors/{id}/reserve|cancel-reservation` (ADMIN).
 
-**Session Service (`:8082`)**
-| Method | Path | Notes |
-| --- | --- | --- |
-| POST | `/auth/login` | issue JWT (public) |
-| POST | `/sessions` | START (ADMIN) |
-| POST | `/sessions/{id}/stop` | STOP + BILL + SETTLE (ADMIN) |
-| GET | `/sessions/{id}` | one session receipt |
-| GET | `/users/{userId}/sessions` | a user's sessions |
-| GET | `/wallets/{userId}` | wallet balance |
-| POST | `/wallets/{userId}/topup` | top up (ADMIN, stretch) |
+**Session Service (`:8082`)** — `POST /auth/login` · `POST /sessions` (ADMIN) ·
+`POST /sessions/{id}/stop` (ADMIN, optional `Idempotency-Key`) · `POST /reservations` (ADMIN) ·
+`GET /sessions/{id}` · `GET /users/{userId}/sessions`.
 
-Health: `GET /actuator/health` (and `/health/readiness`, `/health/liveness`) on each service.
+**Wallet Service (`:8083`)** — `GET /wallets/{userId}` · `POST /wallets/{userId}/topup` (ADMIN) ·
+`POST /wallets/{userId}/debit` (ADMIN, service-to-service, idempotent).
+
+Per service: `GET /actuator/health` (+ readiness/liveness), `GET /actuator/prometheus` (metrics),
+and `GET /swagger-ui.html` (OpenAPI).
+
+## Advanced features (stretch goals)
+
+Every stretch goal from the brief is implemented and tested:
+
+| Stretch goal | Where |
+| --- | --- |
+| **Wallet top-up** | `POST /wallets/{id}/topup` |
+| **Third Wallet Service** | `wallet-service/` — second clean boundary, real Session→Wallet REST call |
+| **Reservation** (RESERVED, expiry) | Station `reserve/cancel` + `ReservationReaper`; Session `POST /reservations` |
+| **Time-of-use tariff** | `PeakSchedule` + peak price; effective price snapshotted at start (see `PeakScheduleTest`) |
+| **Real idempotent stop** | client `Idempotency-Key` (Session) + idempotent debit keyed by session id (Wallet) |
+| **Stuck-connector recovery** | `StuckConnectorReaper` reconciles OCCUPIED-without-ACTIVE and releases |
+| **SessionCompleted event** | published after commit, logged stub subscriber (`SessionCompletedListener`) |
+| **Observability** | Prometheus metrics, OpenAPI/Swagger, structured JSON logs (`json` profile), k8s probes |
+| **Integration test** | `StartStopIntegrationTest` — Testcontainers Postgres + WireMock over real HTTP |
 
 ## Tests
 
 ```bash
-cd station-service && mvn test     # connector reads + occupy/release guards
-cd session-service && mvn test     # cost calc (worked example) + start/stop lifecycle + invalid cases
+cd station-service && mvn test   # 10: peak schedule, connector reads, reservation lifecycle
+cd session-service && mvn test   # 9: cost calc, start/stop lifecycle, idempotency (+ 1 integration)
+cd wallet-service  && mvn test   # 4: idempotent debit (no double-charge), top-up, 404
 ```
 
-Highlights: `CostCalculatorTest` proves `12.5 kWh → 108.25`; `SessionLifecycleTest` drives
-start→stop end to end (Station Service mocked), asserts the wallet settles to `391.75`, and
-checks the guards (occupied-start → 409, stop-twice → 409, missing field → 400).
+23 tests total. The Testcontainers integration test runs in CI and **skips automatically** where
+Docker isn't reachable (it's marked `disabledWithoutDocker`).
 
 ## Configuration
 
-Everything comes from env vars — nothing hardcoded. See [.env.example](.env.example). Key vars:
-`DB_URL`, `POSTGRES_USER/PASSWORD`, `STATION_SERVICE_URL`, `SECURITY_ENABLED`, `JWT_SECRET`,
-`JWT_EXPIRY_MINUTES`, `DEMO_ADMIN_PASSWORD`, `DEMO_VIEWER_PASSWORD`. No secrets are committed.
+Everything from env vars — nothing hardcoded. See [.env.example](.env.example). Key vars:
+`DB_URL`, `POSTGRES_USER/PASSWORD`, `STATION_SERVICE_URL`, `WALLET_SERVICE_URL`, `SECURITY_ENABLED`,
+`JWT_SECRET`, `PRICING_PEAK_START_HOUR/END_HOUR`, `RECONCILE_*`. No secrets committed.
 
 ## Kubernetes & CI
 
-- `k8s/` — plain YAML: Deployment + Service per service, Postgres, a **ConfigMap** (non-secret
-  config incl. a default tariff price) and a **Secret** (placeholders only). Validate against a
-  cluster with `kubectl apply --dry-run=client -f k8s/` (the manifests are also structurally
-  valid offline; `--dry-run=client` needs a reachable cluster for full schema validation).
-- `.github/workflows/ci.yml` — on push: builds + tests both services (JDK 21), builds the Docker
-  images, and builds the web panel.
+- `k8s/` — Deployment + Service per service (station, session, wallet, postgres), a **ConfigMap**
+  and a **Secret** (placeholders). Validate with `kubectl apply --dry-run=client -f k8s/` (the
+  manifests are also structurally valid offline; a reachable cluster is needed for full schema
+  validation).
+- `.github/workflows/ci.yml` — matrix build + test (JDK 21) + Docker build for all three services,
+  plus the panel build.
 
 ## Assumptions & known gaps
 
-- **Insufficient balance → the stop still succeeds and the wallet may go negative** (implemented;
-  see `Wallet.debit` and `DESIGN.md`). Rationale: a session that has physically ended must always be
-  closeable and the connector freed, so a billing shortfall never strands hardware — the negative
-  balance is a recoverable debt (settled by a later top-up). The panel simply shows the balance
-  going below zero. Reject-the-stop is the equally-valid alternative; I chose asset availability
-  over strict prepay.
-- Energy is **reported in the stop request** (meter is simulated), exactly as the brief allows.
-- Users/wallets are **pre-seeded** (driver `7`); there is no user-creation endpoint — out of scope.
-- Panel users (`admin`, `viewer`) are **driver-independent ops accounts**, seeded at startup with
-  BCrypt-hashed passwords from env.
-- The **stuck-connector** and **idempotent-retry** hard problems are written up as prose in
-  `DESIGN.md`, not implemented — per the brief.
-
-## Optional parts attempted
-
-- ✅ **Stage 2** admin panel + full JWT/RBAC on both services, enforced server-side. The panel
-  drives the whole flow visually — **start charging → live session (animated, elapsed timer) →
-  stop & bill (live cost preview) → receipt** — plus a sessions history and driver wallet. Brand
-  mark traced from the ChargeSquare logo. Screenshots in [docs/screenshots/](docs/screenshots).
-  See `SECURITY.md`.
-- ✅ Wallet **top-up** endpoint (stretch) — balance goes up then down across a session.
-- ✅ Readiness/liveness probes wired into k8s.
-- ⬜ Not done: separate Wallet Service, reservations, time-of-use tariff, real event broker.
+- **Insufficient balance → the stop succeeds and the wallet may go negative** (implemented; see
+  `Wallet.debit`). A physically-ended session must always be closeable and the connector freed; the
+  negative balance is a recoverable debt. Rejecting the stop is the equally-valid alternative.
+- **Settlement across services** uses one synchronous idempotent debit inside the stop transaction:
+  if the debit fails the stop rolls back (fail-fast 502); if a later step fails and the client
+  retries, the debit's idempotency key (session id) prevents a double charge. See `DESIGN.md`.
+- Energy is **reported at stop** (meter simulated). Driver `7` is pre-seeded; ops users (`admin`,
+  `viewer`) are seeded at startup with BCrypt-hashed passwords from env.
 
 ## Time spent / what I'd do next
 
-Roughly a focused day on Stage 1 and a few hours on Stage 2. **Next**, in priority order: an
-integration test that runs both services against a Testcontainers Postgres; an idempotency key on
-`stop` (see `DESIGN.md`); OpenAPI/Swagger docs; and splitting the wallet into its own service once
-a second consumer of balances appears.
+~A day on Stage 1, a few hours on Stage 2, and a further focused block on the stretch goals + the
+third service. **Next:** promote the Testcontainers test to also boot Station/Wallet as containers;
+add asymmetric (RS256) JWT so only the auth service signs; and add an outbox for the
+`SessionCompleted` event if async consumers appear.

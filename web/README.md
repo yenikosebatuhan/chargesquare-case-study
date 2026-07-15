@@ -40,6 +40,7 @@ Log in with a demo user:
 
 ## Config
 
-Base URLs are read at build time from `VITE_SESSION_API` and `VITE_STATION_API`
-(default `http://localhost:8082` / `:8081`). See [`../SECURITY.md`](../SECURITY.md) for the auth
-design and the token-storage trade-off.
+Base URLs are read at build time from `VITE_SESSION_API`, `VITE_STATION_API` and `VITE_WALLET_API`
+(default `:8082` / `:8081` / `:8083`) — the wallet now lives in its own service. The Charging page
+also exposes a **Reserve** action and shows **RESERVED** / **PEAK** badges. See
+[`../SECURITY.md`](../SECURITY.md) for the auth design and the token-storage trade-off.

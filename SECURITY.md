@@ -10,19 +10,18 @@ plus server-enforced RBAC, with the trade-offs called out.
   with the username as `sub`, a `role` claim, and an expiry (`JWT_EXPIRY_MINUTES`, default 120).
 - **Carried:** the SPA stores the token and sends it on every request as
   `Authorization: Bearer <token>`.
-- **Verified:** a `JwtAuthFilter` in **each** service validates the signature + expiry with the
-  shared secret and puts the role into the Spring `SecurityContext` as `ROLE_<role>`. No DB lookup
-  on the hot path — the role travels in the token.
+- **Verified:** a `JwtAuthFilter` in **each of the three** services validates the signature + expiry
+  with the shared secret and puts the role into the Spring `SecurityContext` as `ROLE_<role>`. No DB
+  lookup on the hot path — the role travels in the token.
 
-Both services share one signing secret (`JWT_SECRET`), so either can verify a token independently.
-Trade-off vs. per-service keys: a shared secret is simple and stateless but means a leak affects
-both services and rotation must be coordinated; as the number of services grows I'd move to
-asymmetric keys (services verify with a public key, only the auth service signs) or a small
-introspection endpoint.
+All three services share one signing secret (`JWT_SECRET`), so each can verify a token independently.
+Trade-off vs. per-service keys: a shared secret is simple and stateless but means a leak affects every
+service and rotation must be coordinated; as the number of services grows I'd move to asymmetric keys
+(services verify with a public key, only the auth service signs) or a small introspection endpoint.
 
 ## Authorization — two roles, enforced on the server
 
-Roles live in the token claim. Enforcement is in `SecurityConfig` on **both** services — never by
+Roles live in the token claim. Enforcement is in `SecurityConfig` on **every** service — never by
 hiding buttons. The panel disables/hides controls as a courtesy, but a VIEWER token calling a write
 endpoint directly still gets a **403**.
 
@@ -33,15 +32,20 @@ endpoint directly still gets a **403**.
 | List / view sessions & receipts | ✅ | ✅ |
 | Start / stop a session | ❌ | ✅ |
 | Top up a wallet | ❌ | ✅ |
-| Internal occupy / release connector | ❌ | ✅ (service-to-service) |
+| Reserve / start / stop a session | ❌ | ✅ |
+| Top up a wallet | ❌ | ✅ |
+| Internal occupy / release / reserve connector | ❌ | ✅ (service-to-service) |
+| Internal wallet **debit** | ❌ | ✅ (service-to-service) |
 
 - Reads require any valid token → unauthenticated = **401**, under-privileged = **403** (both use
   the consistent `{ "error", "message" }` body).
-- Write/management endpoints (`POST /sessions`, `/sessions/*/stop`, `/wallets/*/topup`) require **ADMIN**.
-- The internal `POST /connectors/*/occupy|release` on Station Service also requires **ADMIN**.
-  Session Service reaches them **service-to-service** by minting a short-lived ADMIN service token
-  (`ServiceTokenProvider`, subject `service:session-service`) signed with the shared secret — so
-  even the internal path is authenticated, and anonymous/viewer calls to it are rejected.
+- Write/management endpoints (`POST /sessions`, `/sessions/*/stop`, `/reservations`, `/wallets/*/topup`)
+  require **ADMIN**.
+- The internal connector `occupy|release|reserve|cancel-reservation` (Station) and the wallet `debit`
+  (Wallet) also require **ADMIN**. Session Service reaches them **service-to-service** by minting a
+  short-lived ADMIN service token (`ServiceTokenProvider`, subject `service:session-service`) signed
+  with the shared secret — so even the internal paths are authenticated, and anonymous/viewer calls
+  to them are rejected.
 
 ## Roles in the token vs. looked up server-side
 
