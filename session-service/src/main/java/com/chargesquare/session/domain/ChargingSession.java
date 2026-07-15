@@ -44,6 +44,10 @@ public class ChargingSession {
     @Column(name = "cost")
     private BigDecimal cost;
 
+    /** Wallet balance right after this session was settled (from the Wallet Service debit). */
+    @Column(name = "wallet_balance_after")
+    private BigDecimal walletBalanceAfter;
+
     @Embedded
     private TariffSnapshot tariffSnapshot;
 
@@ -81,8 +85,17 @@ public class ChargingSession {
         return this.cost;
     }
 
+    /** Record the wallet balance returned by the settlement, for the receipt and later reads. */
+    public void recordSettlement(BigDecimal balanceAfter) {
+        this.walletBalanceAfter = balanceAfter;
+    }
+
     public boolean isActive() {
         return status == SessionStatus.ACTIVE;
+    }
+
+    public BigDecimal getWalletBalanceAfter() {
+        return walletBalanceAfter;
     }
 
     public Long getId() {

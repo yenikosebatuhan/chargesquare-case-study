@@ -28,10 +28,19 @@ spring:
   jackson:
     default-property-inclusion: non_null   # omit null fields so start/stop bodies match the spec
 
-# Real synchronous call target (Session Service -> Station Service).
+# Real synchronous call targets (Session Service -> Station Service and Wallet Service).
 station:
   service:
     url: ${STATION_SERVICE_URL:http://localhost:8081}
+wallet:
+  service:
+    url: ${WALLET_SERVICE_URL:http://localhost:8083}
+
+# Stuck-connector reconciliation reaper: which stations to sweep and how often.
+reconcile:
+  station-ids: ${RECONCILE_STATION_IDS:1}
+  interval-ms: ${RECONCILE_INTERVAL_MS:60000}
+  initial-delay-ms: ${RECONCILE_INITIAL_DELAY_MS:60000}
 
 security:
   enabled: ${SECURITY_ENABLED:true}
@@ -53,11 +62,15 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,prometheus,metrics
   endpoint:
     health:
       probes:
         enabled: true
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
 
 logging:
   level:

@@ -37,12 +37,12 @@ public record SessionResponse(
                 TariffSnapshotDto.from(s.getTariffSnapshot()), null);
     }
 
-    /** Shape returned by STOP and the read endpoints: full receipt plus wallet balance. */
-    public static SessionResponse detail(ChargingSession s, BigDecimal walletBalance) {
+    /** Shape returned by STOP and the read endpoints: full receipt plus the settled wallet balance. */
+    public static SessionResponse detail(ChargingSession s) {
         return new SessionResponse(
                 s.getId(), s.getUserId(), s.getConnectorId(), s.getStatus().name(),
                 s.getStartedAt(), s.getEndedAt(), s.getEnergyKwh(), s.getCost(),
                 s.getTariffSnapshot().getCurrency(),
-                TariffSnapshotDto.from(s.getTariffSnapshot()), walletBalance);
+                TariffSnapshotDto.from(s.getTariffSnapshot()), s.getWalletBalanceAfter());
     }
 }

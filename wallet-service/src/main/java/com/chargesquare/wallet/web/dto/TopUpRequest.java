@@ -1,4 +1,4 @@
-package com.chargesquare.session.web.dto;
+package com.chargesquare.wallet.web.dto;
 
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;

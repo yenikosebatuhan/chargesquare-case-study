@@ -350,3 +350,8 @@ section { display: flex; flex-direction: column; gap: 0.9rem; }
 /* Receipt inside modal-body */
 .receipt-rows { padding: 0; }
 .receipt-total { margin: 0.2rem 0 0; }
+
+/* Reservation + time-of-use additions */
+.pill.reserved { background: #dbeafe; color: #2563eb; }
+.peak-badge { margin-left: 0.4rem; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.04em; color: #b45309; background: #fef3c7; padding: 0.1rem 0.4rem; border-radius: 5px; }
+.connector-actions { display: flex; flex-direction: column; gap: 0.5rem; }

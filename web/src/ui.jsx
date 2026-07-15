@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 // ---- Shared presentational helpers used across the panel ----
 
 export function StatusPill({ status }) {
-  const map = { AVAILABLE: "green", COMPLETED: "green", OCCUPIED: "amber", ACTIVE: "live" };
+  const map = { AVAILABLE: "green", COMPLETED: "green", OCCUPIED: "amber", ACTIVE: "live", RESERVED: "reserved" };
   const cls = map[status] || "green";
   return <span className={`pill ${cls}`}>{status}</span>;
 }

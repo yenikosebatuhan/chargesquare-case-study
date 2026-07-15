@@ -19,11 +19,12 @@ public class StationController {
         this.service = service;
     }
 
-    /** List a station's connectors with status + tariff. */
+    /** List a station's connectors with status + tariff (effective price reflects peak/off-peak now). */
     @GetMapping("/{id}/connectors")
     public List<ConnectorResponse> listConnectors(@PathVariable Long id) {
+        boolean peakNow = service.isPeakNow();
         return service.listStationConnectors(id).stream()
-                .map(ConnectorResponse::from)
+                .map(c -> ConnectorResponse.from(c, peakNow))
                 .toList();
     }
 }

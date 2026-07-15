@@ -1,6 +1,6 @@
-package com.chargesquare.session.web.dto;
+package com.chargesquare.wallet.web.dto;
 
-import com.chargesquare.session.domain.Wallet;
+import com.chargesquare.wallet.domain.Wallet;
 
 import java.math.BigDecimal;
 

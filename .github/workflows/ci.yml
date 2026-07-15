@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        service: [station-service, session-service]
+        service: [station-service, session-service, wallet-service]
     steps:
       - uses: actions/checkout@v4
 

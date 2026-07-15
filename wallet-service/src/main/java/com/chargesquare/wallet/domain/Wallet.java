@@ -1,4 +1,4 @@
-package com.chargesquare.session.domain;
+package com.chargesquare.wallet.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -7,7 +7,7 @@ import jakarta.persistence.Table;
 
 import java.math.BigDecimal;
 
-/** A driver's prepaid balance. Keyed by userId (one wallet per user). */
+/** A driver's prepaid balance, keyed by userId. */
 @Entity
 @Table(name = "wallets")
 public class Wallet {
@@ -32,9 +32,8 @@ public class Wallet {
     }
 
     /**
-     * Deduct a charge. We allow the balance to go negative rather than reject the stop:
-     * a session that has physically ended must always be closeable and the connector freed.
-     * (See DESIGN.md for the trade-off.)
+     * Deduct a charge. The balance may go negative rather than reject the debit: a session that
+     * has physically ended must always be settleable. (See DESIGN.md for the trade-off.)
      */
     public void debit(BigDecimal amount) {
         this.balance = this.balance.subtract(amount);

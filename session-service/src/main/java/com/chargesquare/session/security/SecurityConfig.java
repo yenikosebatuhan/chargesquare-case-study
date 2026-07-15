@@ -53,9 +53,10 @@ public class SecurityConfig {
 
         http
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/login", "/actuator/**", "/health").permitAll()
+                        .requestMatchers("/auth/login", "/actuator/**", "/health",
+                                "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
                         // Write / management actions require ADMIN.
-                        .requestMatchers(HttpMethod.POST, "/sessions", "/sessions/*/stop", "/wallets/*/topup").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/sessions", "/sessions/*/stop", "/reservations").hasRole("ADMIN")
                         // Reads need a valid token (any role).
                         .anyRequest().authenticated())
                 .exceptionHandling(ex -> ex

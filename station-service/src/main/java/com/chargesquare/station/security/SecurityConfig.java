@@ -50,9 +50,12 @@ public class SecurityConfig {
 
         http
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/actuator/**", "/health").permitAll()
+                        .requestMatchers("/actuator/**", "/health",
+                                "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
                         // Internal service-to-service status changes require ADMIN.
-                        .requestMatchers(HttpMethod.POST, "/connectors/*/occupy", "/connectors/*/release").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST,
+                                "/connectors/*/occupy", "/connectors/*/release",
+                                "/connectors/*/reserve", "/connectors/*/cancel-reservation").hasRole("ADMIN")
                         // Everything else (the reads) just needs a valid token.
                         .anyRequest().authenticated())
                 .exceptionHandling(ex -> ex

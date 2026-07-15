@@ -1,8 +1,12 @@
-package com.chargesquare.session.web;
+package com.chargesquare.wallet.web;
 
-import com.chargesquare.session.service.WalletService;
-import com.chargesquare.session.web.dto.TopUpRequest;
-import com.chargesquare.session.web.dto.WalletResponse;
+import com.chargesquare.wallet.domain.Wallet;
+import com.chargesquare.wallet.service.WalletService;
+import com.chargesquare.wallet.service.WalletService.DebitResult;
+import com.chargesquare.wallet.web.dto.DebitRequest;
+import com.chargesquare.wallet.web.dto.DebitResponse;
+import com.chargesquare.wallet.web.dto.TopUpRequest;
+import com.chargesquare.wallet.web.dto.WalletResponse;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -26,9 +30,17 @@ public class WalletController {
         return WalletResponse.from(service.getWallet(userId));
     }
 
-    /** Stretch: top up a driver's balance (ADMIN-only when security is enabled). */
+    /** Ops action: add funds (ADMIN when secured). */
     @PostMapping("/{userId}/topup")
     public WalletResponse topUp(@PathVariable Long userId, @Valid @RequestBody TopUpRequest request) {
         return WalletResponse.from(service.topUp(userId, request.amount()));
+    }
+
+    /** Service-to-service: idempotent debit at session stop (ADMIN when secured). */
+    @PostMapping("/{userId}/debit")
+    public DebitResponse debit(@PathVariable Long userId, @Valid @RequestBody DebitRequest request) {
+        Wallet wallet = service.getWallet(userId);
+        DebitResult result = service.debit(userId, request.amount(), request.idempotencyKey());
+        return new DebitResponse(userId, result.balanceAfter(), wallet.getCurrency(), result.replayed());
     }
 }

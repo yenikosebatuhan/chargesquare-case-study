@@ -34,6 +34,11 @@ spec:
                 configMapKeyRef:
                   name: chargesquare-config
                   key: STATION_SERVICE_URL
+            - name: WALLET_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: chargesquare-config
+                  key: WALLET_SERVICE_URL
             - name: SECURITY_ENABLED
               valueFrom:
                 configMapKeyRef:

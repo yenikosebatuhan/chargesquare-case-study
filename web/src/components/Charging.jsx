@@ -38,6 +38,17 @@ export default function Charging({ stationId, driverId, isAdmin, onAuthError }) 
 
   useEffect(() => { load(); }, [load]);
 
+  const reserve = async (connector) => {
+    setError(null);
+    try {
+      await api.reserve(driverId, connector.connectorId);
+      await load();
+    } catch (err) {
+      if (err.status === 401) return onAuthError();
+      setError(err.code === "FORBIDDEN" ? "Your role cannot reserve." : err.message);
+    }
+  };
+
   const active = sessions.filter((s) => s.status === "ACTIVE");
   const available = connectors.filter((c) => c.status === "AVAILABLE");
   const occupied = connectors.filter((c) => c.status === "OCCUPIED");
@@ -84,7 +95,7 @@ export default function Charging({ stationId, driverId, isAdmin, onAuthError }) 
         <div className="grid-cards">
           {connectors.map((c) => (
             <ConnectorCard key={c.connectorId} connector={c} isAdmin={isAdmin}
-                           onStart={() => setStartTarget(c)} />
+                           onStart={() => setStartTarget(c)} onReserve={() => reserve(c)} />
           ))}
         </div>
       </section>
@@ -131,27 +142,38 @@ function ActiveCard({ session, isAdmin, onStop }) {
   );
 }
 
-function ConnectorCard({ connector, isAdmin, onStart }) {
+function ConnectorCard({ connector, isAdmin, onStart, onReserve }) {
   const c = connector;
-  const isFree = c.status === "AVAILABLE";
+  const pill = { AVAILABLE: "green", RESERVED: "reserved", OCCUPIED: "amber" }[c.status] || "amber";
+  const isOccupied = c.status === "OCCUPIED";
+  const canStart = c.status === "AVAILABLE" || c.status === "RESERVED"; // reserved is held by our demo driver
   return (
-    <div className={`connector-card ${isFree ? "" : "busy"}`}>
+    <div className={`connector-card ${isOccupied ? "busy" : ""}`}>
       <div className="connector-head">
         <span className="plug-lg"><Plug style={{ width: 20, height: 20 }} /></span>
         <div>
           <div className="connector-name">{c.type}</div>
           <div className="connector-id">Connector #{c.connectorId} · {c.powerKw} kW</div>
         </div>
-        <span className={`pill ${isFree ? "green" : "amber"}`}>{c.status}</span>
+        <span className={`pill ${pill}`}>{c.status}</span>
       </div>
       <div className="connector-tariff">
         <span>{money(c.tariff.pricePerKwh, c.tariff.currency)}<small>/kWh</small></span>
+        {c.tariff.peakNow === true && <span className="peak-badge">PEAK</span>}
         {Number(c.tariff.startFee) > 0 && <span className="fee">+{c.tariff.startFee} start</span>}
       </div>
-      <button className="btn btn-primary btn-block" disabled={!isFree || !isAdmin} onClick={onStart}
-              title={!isFree ? "In use" : isAdmin ? "Start charging" : "ADMIN only"}>
-        <Zap style={{ width: 15, height: 15 }} /> {isFree ? "Start charging" : "In use"}
-      </button>
+      <div className="connector-actions">
+        <button className="btn btn-primary btn-block" disabled={!canStart || !isAdmin} onClick={onStart}
+                title={isOccupied ? "In use" : isAdmin ? "Start charging" : "ADMIN only"}>
+          <Zap style={{ width: 15, height: 15 }} /> {isOccupied ? "In use" : "Start charging"}
+        </button>
+        {c.status === "AVAILABLE" && (
+          <button className="btn btn-ghost btn-sm" disabled={!isAdmin} onClick={onReserve}
+                  title={isAdmin ? "Reserve for 5 min" : "ADMIN only"}>
+            <Clock style={{ width: 14, height: 14 }} /> Reserve
+          </button>
+        )}
+      </div>
     </div>
   );
 }

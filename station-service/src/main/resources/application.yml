@@ -26,6 +26,20 @@ spring:
     # V1 schema migration in scope (a version-1 baseline would skip it).
     baseline-on-migrate: true
     baseline-version: 0
+  jackson:
+    default-property-inclusion: non_null   # omit null reservation / peak fields
+
+# Time-of-use pricing window (stretch goal): peak price applies inside [start, end).
+pricing:
+  peak:
+    start-hour: ${PRICING_PEAK_START_HOUR:17}
+    end-hour: ${PRICING_PEAK_END_HOUR:22}
+    zone: ${PRICING_PEAK_ZONE:Europe/Istanbul}
+
+# Reservation-expiry reaper sweep interval.
+reservation:
+  reaper:
+    interval-ms: ${RESERVATION_REAPER_INTERVAL_MS:30000}
 
 # Stage 2 security. Set false for an open Stage-1-only backend.
 security:
@@ -37,7 +51,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,prometheus,metrics
   endpoint:
     health:
       probes:

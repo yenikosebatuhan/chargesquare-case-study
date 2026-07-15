@@ -4,6 +4,7 @@
 
 const SESSION_API = import.meta.env.VITE_SESSION_API || "http://localhost:8082";
 const STATION_API = import.meta.env.VITE_STATION_API || "http://localhost:8081";
+const WALLET_API = import.meta.env.VITE_WALLET_API || "http://localhost:8083";
 
 const TOKEN_KEY = "cs_token";
 const USER_KEY = "cs_user";
@@ -64,7 +65,11 @@ export const api = {
 
   listUserSessions: (userId) => request(SESSION_API, `/users/${userId}/sessions`),
 
-  getWallet: (userId) => request(SESSION_API, `/wallets/${userId}`),
+  // Wallet lives in its own service (Wallet Service).
+  getWallet: (userId) => request(WALLET_API, `/wallets/${userId}`),
+
+  topUp: (userId, amount) =>
+    request(WALLET_API, `/wallets/${userId}/topup`, { method: "POST", body: { amount } }),
 
   startSession: (userId, connectorId) =>
     request(SESSION_API, "/sessions", { method: "POST", body: { userId, connectorId } }),
@@ -72,6 +77,7 @@ export const api = {
   stopSession: (sessionId, energyKwh) =>
     request(SESSION_API, `/sessions/${sessionId}/stop`, { method: "POST", body: { energyKwh } }),
 
-  topUp: (userId, amount) =>
-    request(SESSION_API, `/wallets/${userId}/topup`, { method: "POST", body: { amount } }),
+  // Reserve a connector before starting (Session orchestrates the Station reservation).
+  reserve: (userId, connectorId) =>
+    request(SESSION_API, "/reservations", { method: "POST", body: { userId, connectorId } }),
 };

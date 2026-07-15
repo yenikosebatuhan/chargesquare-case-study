@@ -7,10 +7,13 @@ import com.chargesquare.session.security.ServiceTokenProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
+
+import java.util.List;
 
 /**
  * The real synchronous REST boundary from Session Service to Station Service.
@@ -49,12 +52,16 @@ public class StationClient {
         }
     }
 
-    /** Flip the connector to OCCUPIED. Maps a 409 to CONNECTOR_OCCUPIED. */
-    public void occupy(Long connectorId) {
+    /**
+     * Flip the connector to OCCUPIED for a given user. Passing the user lets Station honour a
+     * reservation the same user holds. Maps a 409 to CONNECTOR_OCCUPIED / CONNECTOR_RESERVED.
+     */
+    public void occupy(Long connectorId, Long userId) {
         try {
             restClient.post()
                     .uri("/connectors/{id}/occupy", connectorId)
                     .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenProvider.bearerToken())
+                    .body(new OccupyRequest(userId))
                     .retrieve()
                     .onStatus(status -> status.value() == 409, (req, res) -> {
                         throw new ConflictException("CONNECTOR_OCCUPIED",
@@ -83,8 +90,50 @@ public class StationClient {
         }
     }
 
+    /** Reserve a connector for a user (stretch goal); maps 404/409 to clear errors. */
+    public ConnectorView reserve(Long connectorId, Long userId, Integer ttlSeconds) {
+        try {
+            return restClient.post()
+                    .uri("/connectors/{id}/reserve", connectorId)
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenProvider.bearerToken())
+                    .body(new ReserveRequest(userId, ttlSeconds))
+                    .retrieve()
+                    .onStatus(status -> status.value() == 409, (req, res) -> {
+                        throw new ConflictException("CONNECTOR_UNAVAILABLE",
+                                "Connector " + connectorId + " cannot be reserved");
+                    })
+                    .onStatus(status -> status.value() == 404, (req, res) -> {
+                        throw new NotFoundException("CONNECTOR_NOT_FOUND",
+                                "Connector " + connectorId + " does not exist");
+                    })
+                    .body(ConnectorView.class);
+        } catch (ResourceAccessException ex) {
+            throw unreachable(ex);
+        }
+    }
+
+    /** List a station's connectors (used by the stuck-connector reaper). */
+    public List<ConnectorView> listConnectors(Long stationId) {
+        try {
+            return restClient.get()
+                    .uri("/stations/{id}/connectors", stationId)
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenProvider.bearerToken())
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<List<ConnectorView>>() {});
+        } catch (ResourceAccessException ex) {
+            throw unreachable(ex);
+        }
+    }
+
     private UpstreamException unreachable(Exception cause) {
         log.error("Station Service unreachable: {}", cause.getMessage());
         return new UpstreamException("Station Service is unreachable");
     }
+
+    public record OccupyRequest(Long userId) {
+    }
+
+    public record ReserveRequest(Long userId, Integer ttlSeconds) {
+    }
 }
+
