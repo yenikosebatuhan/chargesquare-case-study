@@ -57,8 +57,24 @@ cp .env.example .env          # local dev placeholders; never commit a real .env
 docker compose up --build     # Postgres + Station + Wallet + Session, schema created from scratch
 ```
 
-Wait for the services to report healthy, then drive the flow below. Add the admin panel with
-`docker compose --profile panel up --build` (panel on http://localhost:8080).
+Wait for the services to report healthy, then drive the flow below (curl) or use the UI.
+
+### Open the admin panel (UI)
+
+```bash
+docker compose --profile panel up --build     # brings up everything + the panel
+```
+
+Then open **http://localhost:8080** and log in:
+
+| User | Password | Role | Can start / stop / reserve / top-up? |
+| --- | --- | --- | --- |
+| `admin` | `admin123` | ADMIN | ✅ yes |
+| `viewer` | `viewer123` | VIEWER | ❌ read-only (buttons disabled; the API also returns 403) |
+
+From the **Charging** page you can start a session, reserve a connector, watch it charge live and
+**Stop & bill**; the **Sessions** page shows the history, receipts and wallet. (Screenshots are in
+[docs/screenshots/](docs/screenshots).) API docs are at **http://localhost:8082/swagger-ui.html**.
 
 > **Security note:** the compose file runs with `SECURITY_ENABLED=true`. The curl walkthrough logs
 > in first. Set `SECURITY_ENABLED=false` in `.env` for an open, token-free backend.
