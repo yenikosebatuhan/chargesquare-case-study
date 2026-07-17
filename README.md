@@ -35,6 +35,7 @@ from the brief — see [Advanced features](#advanced-features-stretch-goals).
   top-up endpoint.
 - **Web panel** (`:8080`, optional) — a JWT-authenticated ops panel: a **Charging** page (start,
   reserve, watch live charging, stop & bill) and a **Sessions** page (history, receipts, wallet).
+  Screenshots in [docs/screenshots/](docs/screenshots).
 
 ## Stack & why
 

@@ -15,7 +15,7 @@
     <artifactId>session-service</artifactId>
     <version>1.0.0</version>
     <name>session-service</name>
-    <description>ChargeSquare Session Service — charging session lifecycle, wallet settlement and auth.</description>
+    <description>ChargeSquare Session Service — charging session lifecycle, settlement orchestration, idempotency and auth.</description>
 
     <properties>
         <java.version>21</java.version>
