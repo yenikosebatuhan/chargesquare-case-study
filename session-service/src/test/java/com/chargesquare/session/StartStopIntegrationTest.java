@@ -44,7 +44,9 @@ class StartStopIntegrationTest {
 
     @BeforeAll
     static void startWireMock() {
-        downstream = new WireMockServer(options().dynamicPort());
+        // Plain-HTTP/2 (h2c) upgrades from the JDK HttpClient are flaky against WireMock's
+        // Jetty (intermittent RST_STREAM); pin the stub to HTTP/1.1 for determinism.
+        downstream = new WireMockServer(options().dynamicPort().http2PlainDisabled(true));
         downstream.start();
 
         // Station: connector 10 is AVAILABLE with the DC tariff; occupy/release succeed.
