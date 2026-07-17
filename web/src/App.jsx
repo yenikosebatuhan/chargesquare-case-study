@@ -63,7 +63,7 @@ export default function App() {
             <h1>{PAGES[page].title}</h1>
             <p>{PAGES[page].subtitle}</p>
           </div>
-          <div className="header-station"><Logo size={16} /> <span>Station #{STATION_ID} · Kadıköy</span></div>
+          <div className="header-station"><Logo size={16} /> <span>Station #{STATION_ID} · Kadikoy</span></div>
         </header>
 
         <main className="content">
