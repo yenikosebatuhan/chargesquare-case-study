@@ -30,8 +30,6 @@ endpoint directly still gets a **403**.
 | Log in | ✅ | ✅ |
 | List stations & connectors | ✅ | ✅ |
 | List / view sessions & receipts | ✅ | ✅ |
-| Start / stop a session | ❌ | ✅ |
-| Top up a wallet | ❌ | ✅ |
 | Reserve / start / stop a session | ❌ | ✅ |
 | Top up a wallet | ❌ | ✅ |
 | Internal occupy / release / reserve connector | ❌ | ✅ (service-to-service) |
